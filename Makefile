@@ -1,9 +1,10 @@
-SUBDIRS = blink ledblink simple test1 rctopi
 
-.PHONY: subdirs $(SUBDIRS)
+SUBDIRS         = blink ledblink simple test1 rctopi
 
-subdirs: $(SUBDIRS)
+.PHONY: all clean
 
-$(SUBDIRS):
-	$(MAKE) -C $@
+all clean:
+	for dir in $(SUBDIRS); do \
+		$(MAKE) -C $$dir $@; \
+	done
 
