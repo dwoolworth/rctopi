@@ -1,0 +1,9 @@
+.DS_Store
+*.tar.gz
+*.o
+*.srec
+*.hex
+*.lst
+*.bin
+*.map
+*.elf
