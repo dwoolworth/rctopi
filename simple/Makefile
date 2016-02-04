@@ -1,6 +1,6 @@
 
-PRG						= blink
-OBJ						= blink.o
+PRG						= simple
+OBJ						= simple.o
 
 ISP                     = usbtiny
 

@@ -1,6 +1,6 @@
 
-PRG						= blink
-OBJ						= blink.o
+PRG						= ledblink
+OBJ						= ledblink.o
 
 ISP                     = usbtiny
 
