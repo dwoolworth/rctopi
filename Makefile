@@ -18,10 +18,10 @@ default:
 	avr-objcopy -j .eeprom --change-section-lma .eeprom=0 -O ihex myproject.out myproject.ee.hex
 
 install:
-	sudo avrdude -c usbtiny -p attiny85 -U flash:w:myproject.hex
+	avrdude -c usbtiny -p attiny85 -U flash:w:myproject.hex
 
 install-clean:
-	sudo avrdude -c usbtiny -p attiny85 -D -U flash:w:myproject.hex
+	avrdude -c usbtiny -p attiny85 -D -U flash:w:myproject.hex
 
 clean:
 	rm -f *.hex *.o *.lst *.map *.out
