@@ -7,10 +7,10 @@
 #include <util/delay.h>
 
 #define CAMERA_OFF          0b00000000 // sw1 down
-#define PICTURE_MODE        0b00000100 // sw1 mid, sw2 mid
+#define PICTURE_MODE        0b00000100 // sw1 mid,  sw2 mid
 #define VIDEO_MODE          0b00001000 // sw1 high, sw2 mid
 
-#define PIC_BURST_ACTION    0b00001100 // sw1 mid, sw2 down (picture mode, sw2 down)
+#define PIC_BURST_ACTION    0b00001100 // sw1 mid,  sw2 down (picture mode, sw2 down)
 #define PIC_TOGGLE_ACTION   0b00010000 // sw1 mid,  sw2 high
 #define VID_TOGGLE_ACTION   0b00010100 // sw1 high, sw2 high 
 #define SHUTTER_ACTION      0b00011000 // sw1 high, sw2 low (video mode snapshot)
