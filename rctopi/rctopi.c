@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <avr/io.h>
+#include <avr/sleep.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
@@ -19,6 +20,8 @@
 #define LOW_PWM  1200
 #define MID_PWM  1800
 #define HIGH_PWM 2200
+
+#define _SLEEP set_sleep_mode(SLEEP_MODE_IDLE); sleep_mode
 
 volatile uint8_t previouspins = 0xFF;
 
@@ -54,6 +57,8 @@ int main(void)
     // loop forever, flash pin1 every second to indicate we're
     while (1)
     {
+        _SLEEP();
+
         if (pwm_p0 <= LOW_PWM) {
             // everything is off if p0 is low
             PORTB = CAMERA_OFF;
@@ -90,7 +95,6 @@ int main(void)
                 }
             }
         }
-        _delay_ms(100);
     }
 
     return 0;
