@@ -17,11 +17,13 @@
 
 #define AUX1_ACTION         0b00011100
 
-#define LOW_PWM  1200
-#define MID_PWM  1800
-#define HIGH_PWM 2200
+#define LOW_PWM             1200
+#define MID_PWM             1800
+#define HIGH_PWM            2200
 
-#define _SLEEP set_sleep_mode(SLEEP_MODE_IDLE); sleep_mode
+#define _SLEEP \
+    set_sleep_mode(SLEEP_MODE_IDLE); \
+    sleep_mode
 
 volatile uint8_t previouspins = 0xFF;
 
@@ -57,6 +59,7 @@ int main(void)
     // loop forever, flash pin1 every second to indicate we're
     while (1)
     {
+        // Zzzzz...
         _SLEEP();
 
         if (pwm_p0 <= LOW_PWM) {
