@@ -32,7 +32,10 @@ install: $(PRG)
 	avrdude -c $(ISP) -p $(MCU_TARGET) -D -U flash:w:$(PRG).hex
 
 install-clean: $(PRG)
-	avrdude -c $(ISP) -p $(MCU_TARGET) -U flash:w:$(PRG).hex
+	avrdude -c $(ISP) -p $(MCU_TARGET) -U -U flash:w:$(PRG).hex
+
+# new vals: -U lfuse:w:0xe2:m -U hfuse:w:0x5f:m -U efuse:w:0xff:m
+# defaults  -U lfuse:w:0x62:m -U hfuse:w:0xdf:m -U efuse:w:0xff:m
 
 lst: $(PRG).lst
 
