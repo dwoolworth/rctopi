@@ -1,6 +1,6 @@
 
 PRG						= simple
-OBJ						= simple.o
+OBJ						= simple.o dbg_putchar.o
 
 ISP                     = usbtiny
 
