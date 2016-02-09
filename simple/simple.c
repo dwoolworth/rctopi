@@ -14,9 +14,10 @@
 
 #define BLUE_LED    0b00000010
 #define YELLOW_LED  0b00001000
-#define RED_LED     0b00010000
+// #define RED_LED     0b00010000
+#define LED_NONE    0b00000000
 
-#define PWM_LOW 0
+#define PWM_LOW 78
 #define PWM_MID 100
 #define PWM_HGH 150
 // #define PWM_LOW 78 
@@ -57,8 +58,6 @@ void dbg_putstr(char *str);
 //
 int main(void)
 {
-    char buffer[100];
-
     cli();
 
     // enables input on pin0 and pin1, output on pin2, pin3, and pin4
@@ -77,16 +76,18 @@ int main(void)
     TCCR1 = 0;
     TCNT1 = 0;
     GTCCR = _BV(PSR1);
-    OCR1A = 2;
+    OCR1A = 1;
     OCR1C = 1;
     TIMSK = (1 << OCIE1A);
     TCCR1 = (_BV(CTC1) | _BV(CS12) | _BV(CS11) | _BV(CS10));
+
+    // Initialize before we enable interrupts
+    dbg_tx_init();
+
     sei();
 
     // test the LEDs
-    system_test();
-
-    dbg_tx_init();
+    // system_test();
 
     // loop forever, flash pin1 every second to indicate we're
     while (1)
@@ -94,9 +95,8 @@ int main(void)
         sei();
         _IDLE_SLEEP();
 
-        
-        // display_pulse(rcpulse_1);
-        dbg_putstr(utoa(rcpulse_1, buffer, 10));
+        // display_pulse(rcpulse_0);
+
     }
 
     return 0;
@@ -131,10 +131,10 @@ void display_pulse(uint16_t pwm_to_display)
         }
         else {
             if (pwm_to_display <= PWM_HGH) {
-                enable_led(RED_LED);
+                enable_led(LED_NONE);
             }
             else if (pwm_to_display > PWM_HGH) {
-                enable_led(BLUE_LED | YELLOW_LED | RED_LED);
+                enable_led(BLUE_LED | YELLOW_LED);
             }
         }
     }
@@ -148,7 +148,8 @@ void enable_led(uint8_t led)
 {
     // turn them all off
     PORTB &= 0b11100101;
-    PORTB |= led;
+    if (led > 0)
+        PORTB |= led;
 }
 
 
@@ -171,7 +172,7 @@ void system_test(void)
     // system test...
     enable_led(BLUE_LED);   wait_sec(1);
     enable_led(YELLOW_LED); wait_sec(1);
-    enable_led(RED_LED);    wait_sec(1);
+    // enable_led(RED_LED);    wait_sec(1);
 }
 
 
@@ -191,6 +192,9 @@ ISR(TIM1_COMPA_vect)
 //
 ISR(PCINT0_vect)
 {
+    static int counter = 0;
+    char buffer[100];
+
     changedbits = PINB ^ previouspins;
     previouspins = PINB;
 
@@ -201,6 +205,13 @@ ISR(PCINT0_vect)
         }
         else {
             rcpulse_0 = tmprcpulse_0;
+            dbg_putstr("pb0: ");
+            dbg_putstr(utoa(rcpulse_0, buffer, 10));
+            dbg_putstr("| ");
+            if (counter++ > 80) {
+                dbg_putstr("\r\n");
+                counter = 0;
+            }
         }
     }
 
@@ -211,8 +222,87 @@ ISR(PCINT0_vect)
         }
         else {
             rcpulse_1 = tmprcpulse_1;
+            dbg_putstr("pb0: ");
+            dbg_putstr(utoa(rcpulse_0, buffer, 10));
+            dbg_putstr("| ");
+            if (counter++ > 80) {
+                dbg_putstr("\r\n");
+                counter = 0;
+            }
         }
     }
 }
+
+
+#if DBG_UART_ENABLE
+
+void dbg_putchar(uint8_t c)
+{
+#define DBG_UART_TX_NUM_DELAY_CYCLES    ((F_CPU/DBG_UART_BAUDRATE-16)/4+1)
+#define DBG_UART_TX_NUM_ADD_NOP     ((F_CPU/DBG_UART_BAUDRATE-16)%4)
+    uint8_t sreg;
+    uint16_t tmp;
+    uint8_t numiter = 10;
+
+    sreg = SREG;
+    cli();
+
+    asm volatile (
+        /* put the START bit */
+        "in %A0, %3"        "\n\t"  /* 1 */
+        "cbr %A0, %4"       "\n\t"  /* 1 */
+        "out %3, %A0"       "\n\t"  /* 1 */
+        /* compensate for the delay induced by the loop for the
+         * other bits */
+        "nop"           "\n\t"  /* 1 */
+        "nop"           "\n\t"  /* 1 */
+        "nop"           "\n\t"  /* 1 */
+        "nop"           "\n\t"  /* 1 */
+        "nop"           "\n\t"  /* 1 */
+
+        /* delay */
+       "1:" "ldi %A0, lo8(%5)"  "\n\t"  /* 1 */
+        "ldi %B0, hi8(%5)"  "\n\t"  /* 1 */
+       "2:" "sbiw %A0, 1"       "\n\t"  /* 2 */
+        "brne 2b"       "\n\t"  /* 1 if EQ, 2 if NEQ */
+#if DBG_UART_TX_NUM_ADD_NOP > 0
+        "nop"           "\n\t"  /* 1 */
+  #if DBG_UART_TX_NUM_ADD_NOP > 1
+        "nop"           "\n\t"  /* 1 */
+    #if DBG_UART_TX_NUM_ADD_NOP > 2
+        "nop"           "\n\t"  /* 1 */
+    #endif
+  #endif
+#endif
+        /* put data or stop bit */
+        "in %A0, %3"        "\n\t"  /* 1 */
+        "sbrc %1, 0"        "\n\t"  /* 1 if false,2 otherwise */
+        "sbr %A0, %4"       "\n\t"  /* 1 */
+        "sbrs %1, 0"        "\n\t"  /* 1 if false,2 otherwise */
+        "cbr %A0, %4"       "\n\t"  /* 1 */
+        "out %3, %A0"       "\n\t"  /* 1 */
+
+        /* shift data, putting a stop bit at the empty location */
+        "sec"           "\n\t"  /* 1 */
+        "ror %1"        "\n\t"  /* 1 */
+
+        /* loop 10 times */
+        "dec %2"        "\n\t"  /* 1 */
+        "brne 1b"       "\n\t"  /* 1 if EQ, 2 if NEQ */
+        : "=&w" (tmp),          /* scratch register */
+          "=r" (c),         /* we modify the data byte */
+          "=r" (numiter)        /* we modify number of iter.*/
+        : "I" (_SFR_IO_ADDR(DBG_UART_TX_PORT)),
+          "M" (1<<DBG_UART_TX_PIN),
+          "i" (DBG_UART_TX_NUM_DELAY_CYCLES),
+          "1" (c),          /* data */
+          "2" (numiter)
+    );
+    SREG = sreg;
+}
+#undef DBG_UART_TX_NUM_DELAY_CYCLES
+#undef DBG_UART_TX_NUM_ADD_NOP
+
+#endif
 
 // EOF

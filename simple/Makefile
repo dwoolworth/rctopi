@@ -1,9 +1,7 @@
 
 PRG						= simple
-OBJ						= simple.o dbg_putchar.o
-
+OBJ						= simple.o
 ISP                     = usbtiny
-
 MCU_TARGET				= attiny85
 OPTIMIZE				= -Os
 DEFS					= -DF_CPU=8000000
@@ -23,6 +21,9 @@ all: $(PRG).elf lst text eeprom
 
 $(PRG).elf: $(OBJ)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
+
+simple.o: dbg_putchar.h
+dbg_putchar.o: dbg_putchar.h
 
 clean:
 	rm -rf *.o $(PRG) *.elf *.eps *.png *.pdf *.bak
