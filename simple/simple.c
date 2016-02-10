@@ -200,7 +200,7 @@ ISR(PCINT0_vect)
 
     // only should occur if PB0 changes
     if (changedbits & (1 << PB0)) {
-        if ((PINB & (1 << PB0)) == 1) {
+        if (PINB & (1 << PB0)) {
             tmprcpulse_0 = 0;
         }
         else {
@@ -217,13 +217,13 @@ ISR(PCINT0_vect)
 
     // only should occur if PB1 changes
     if (changedbits & (1 << PB2)) {
-        if ((PINB & (1 << PB2)) == 1) {
+        if (PINB & (1 << PB2)) {
             tmprcpulse_1 = 0;
         }
         else {
             rcpulse_1 = tmprcpulse_1;
-            dbg_putstr("pb0: ");
-            dbg_putstr(utoa(rcpulse_0, buffer, 10));
+            dbg_putstr("pb1: ");
+            dbg_putstr(utoa(rcpulse_1, buffer, 10));
             dbg_putstr("| ");
             if (counter++ > 80) {
                 dbg_putstr("\r\n");

@@ -17,9 +17,9 @@
 
 #define AUX1_ACTION         0b00000111
 
-#define LOW_PWM             50
-#define MID_PWM             75 
-#define HIGH_PWM            90
+#define LOW_PWM             75
+#define MID_PWM             100
+#define HIGH_PWM            150
 
 #define PWM_AVG_CNT         10
 
@@ -28,6 +28,7 @@
     sleep_mode
 
 volatile uint8_t previouspins = 0xFF;
+volatile uint8_t changedpins = 0;
 
 volatile int16_t pwm_p0  = 0;
 volatile int16_t tpwm_p0 = 0;
@@ -65,6 +66,7 @@ int main(void)
 //
 void setup(void)
 {
+    // disable interrupt
     cli();
 
     // enables input on pin3 and pin4, output on pin0, pin1, and pin2
@@ -82,18 +84,17 @@ void setup(void)
 
     TCCR1 = 0;
     TCNT1 = 0;
-    OCR1A = 2;
-    OCR1C = 2;
+    OCR1A = 1;
+    OCR1C = 1;
     GTCCR = _BV(PSR1);
-
-    // setup timer TCCR1 at 1Mhz
-    TCCR1 = (_BV(CTC1) | _BV(CS12) | _BV(CS11) | _BV(CS10));
 
     // setup compare/match interrupt for timer
     TIMSK = (1 << OCIE1A);
 
-    TIMSK &= ~(1 << OCIE1A);
+    // setup timer TCCR1 at 1Mhz
+    TCCR1 = (_BV(CTC1) | _BV(CS12) | _BV(CS11) | _BV(CS10));
 
+    // enable interrupt
     sei();
 }
 
@@ -150,14 +151,12 @@ ISR(TIM1_COMPA_vect)
 //
 ISR(PCINT0_vect)
 {
-    uint8_t changedbits;
-
-    changedbits = PINB ^ previouspins;
+    changedpins = PINB ^ previouspins;
     previouspins = PINB;
 
-    if (changedbits & (1 << PB3)) {
+    if (changedpins & (1 << PB3)) {
         // rising edge
-        if ((PINB & (1 << PB3)) == 1) {
+        if (PINB & (1 << PB3)) {
             // clear pulse timer
             tpwm_p0 = 0;
         }
@@ -167,9 +166,9 @@ ISR(PCINT0_vect)
         }
     }
 
-    if (changedbits & (1 << PB4)) {
+    if (changedpins & (1 << PB4)) {
         // rising edge
-        if ((PINB & (1 << PB4)) == 1) {
+        if (PINB & (1 << PB4)) {
             // clear pulse timer
             tpwm_p1 = 0;
         }
