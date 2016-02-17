@@ -39,114 +39,148 @@ h3['Stop']          = "bacpac/SH?t=" + wifipassword + "&p=%00"
 camCmds['h4'] = h4
 camCmds['h3'] = h3
 
-# ATtiny85 input commands
-t85CameraOff        = 0b000
-t85PhotoMode        = 0b001
-t85VideoMode        = 0b010
-t85BurstAction      = 0b011
-t85ToggleAction     = 0b100
-t85ShutterAction    = 0b110
-t85Aux1Action       = 0b111
+# Mode states for ATtiny85 and internal status
+modeCameraOff        = 0b000
+modePhotoMode        = 0b001
+modeVideoMode        = 0b010
+modeBurstAction      = 0b011
+modeToggleAction     = 0b100
+modeShutterAction    = 0b110
+modeAux1Action       = 0b111
+
+pin0 = 17
+pin1 = 27
+pin2 = 22
+cameraMode = modeCameraOff
+shutterToggle = False
+actionRunning = False
+
+
 
 def sendCmd(cmd):
-    if cmd 
     data = urllib.request.urlretrieve(targetUrl + cmd)
 
 def turnOffCamera():
+    global cameraMode
+    global shutterToggle
+    global actionRunning
     # check if camera is running first
-    if cameraMode in (t85VideoMode, t85BurstAction) and actionRunning:
+    if cameraMode in (modeVideoMode, modeBurstAction) and actionRunning:
         # stop camera from running
         sendCmd(camCmds[gpv]['Stop'])
     # turn camera off
     sendCmd(camCmds[gpv]['Off']
     shutterToggle = False
     actionRunning = False
-    cameraMode = t85CameraOff
+    cameraMode = modeCameraOff
+
+def turnOnCamera():
+    if cameraMode = modeCameraOff:
+        sendCmd(camCmds[gpv]['On'])
 
 def switchCameraMode(mode):
+    global cameraMode
+    global actionRunning
+    global shutterToggle
     # put camera in photo mode, if it's already in photo mode then reset
     # toggle to false.  If we're in video mode and we're running, stop first,
     # then toggle photo mode.  If we were in burst action, then stop bursting.
-    if mode == t85PhotoMode:
-        if cameraMode in (t85VideoMode, t85BurstAction) and actionRunning:
+    if mode == modePhotoMode:
+        if cameraMode in (modeVideoMode, modeBurstAction) and actionRunning:
             # stop camera from running
             sendCmd(camCmds[gpv]['Stop'])
             actionRunning = False
-        if cameraMode != t85PhotoMode:
+        if cameraMode != modePhotoMode:
             sendCmd(camCmds[gpv]['PhotoMode'])
-    elif mode == t85VideoMode:
-        if cameraMode == t85BurstAction and actionRunning:
+        shutterToggle = False
+    elif mode == modeVideoMode:
+        if cameraMode == modeBurstAction and actionRunning:
             # stop camera from running
             sendCmd(camCmds[gpv]['Stop'])
             actionRunning = False
-        if cameraMode != t85VideoMode:
+        if cameraMode != modeVideoMode:
             sendCmd(camCmds[gpv]['VideoMode'])
-    elif mode == t85BurstAction:
-        if cameraMode == t85VideoMode and actionRunning:
+        shutterToggle = False
+    elif mode == modeBurstAction:
+        if cameraMode == modeVideoMode and actionRunning:
             # stop camera from running
             sendCmd(camCmds[gpv]['Stop'])
             actionRunning = False
-        if cameraMode != t85BurstAction:
+        if cameraMode != modeBurstAction:
             sendCmd(camCmds[gpv]['BurstMode0'])
-        sendCmd(camCmds[gpv]['BurstMode1'])
+            sendCmd(camCmds[gpv]['BurstMode1'])
         actionRunning = True
-    if cameraMode = t85CameraOff:
-        # turn camera on
-        sendCmd(camCmds[gpv]['On'])
-    cameraMode = t85PhotoMode
-    shutterToggle = False
+        shutterToggle = False
+    else:
+        # bad command
+        return
+
+def toggleAndShutterAction():
+    global actionRunning
+    global shutterToggle
+    # Left off here!  TODO
+
+
     
+def initGPIO():
+    global GPIO
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setwarnings(False)
+    GPIO.setup(pin0, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    GPIO.setup(pin1, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    GPIO.setup(pin2, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
+    GPIO.add_event_detect(pin0, GPIO.BOTH)
+    GPIO.add_event_detect(pin1, GPIO.BOTH)
+    GPIO.add_event_detect(pin2, GPIO.BOTH)
 
-pin0 = 17
-pin1 = 27
-pin2 = 22
-GPIO.setmode(GPIO.BCM)
-GPIO.setwarnings(False)
-GPIO.setup(pin0, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-GPIO.setup(pin1, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-GPIO.setup(pin2, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
-GPIO.add_event_detect(pin0, GPIO.BOTH)
-GPIO.add_event_detect(pin1, GPIO.BOTH)
-GPIO.add_event_detect(pin2, GPIO.BOTH)
+###
+# Main Entry Point
+###
 
-cameraMode = t85CameraOff
-shutterToggle = False
-actionRunning = False
+initGPIO()
 
 # Use GPIO.event_detected() because it will always recall an event that's occurred,
 # and we can use a consistent while loop to do housekeeping, should it be necessary
 while True:
     if GPIO.event_detected(pin0) or GPIO.event_detected(pin1) or GPIO.event_detected(pin2):
-        cmd |= ((GPIO.input(pin0) << 0) | (GPIO.input(pin1) << 1) | (GPIO.input(pin2) << 2))
-        if cmd & t85CameraOff and cameraMode != t85CameraOff:
-            turnOffCamera()
-        elif cmd & t85PhotoMode:
-            switchCameraMode(t85PhotoMode)
 
-        elif cmd & t85VideoMode:
-            # put camera in video mode.  if it's already in video mode then reset
-            # shutter toggle to false.  If we're in burst action, then stop bursting
-            # and put in video mode.
-            if cameraMode = t85CameraOff:
-                # turn camera on
-                sendCmd(camCmds[gpv]['On'])
-            if cameraMode != t85VideoMode:
-                sendCmd(camCmds[gpv]['VideoMode'])
-            cameraMode = t85VideMode
-            shutterToggle = False
-        elif cmd & t85BurstAction:
-            # put camera in burst mode and start, if it's already bursting, ignore, if
-            # we were in video mode, stop video, change modes and start bursting.
-        elif cmd & t85ToggleAction:
+        # Read pin status
+        cmd |= ((GPIO.input(pin0) << 0) | (GPIO.input(pin1) << 1) | (GPIO.input(pin2) << 2))
+
+        # Respond to commands
+        if cmd & modeCameraOff and cameraMode != modeCameraOff:
+            turnOffCamera()
+
+        elif cmd & modePhotoMode:
+            turnOnCamera()
+
+            # put camera in photo mode
+            switchCameraMode(modePhotoMode)
+
+        elif cmd & modeVideoMode:
+            turnOnCamera()
+
+            # put camera in videomode
+            switchCameraMode(modeVideoMode)
+
+        elif cmd & modeBurstAction:
+            turnOnCamera()
+
+            # put camera in burst mode and start
+            switchCameraMode(modeBurstAction)
+
+        elif cmd & modeToggleAction:
             # if we're in photo mode, if shuttertoggle is false, snap photo and
             # set shuttertoggle to true. if we're in video mode and shutter toggle is
             # false and videoRunning is false, start video, set shutter toggle to true
             # and video running to true.  If we are in burst action mode (shouldn't happen)
             # then stop burst, put in photo mode, take photo as above
-        elif cmd & t85ShutterAction:
+
+        elif cmd & modeShutterAction:
             # if we're in photo mode (shouldn't occur), do nothing, if we're in video
             # mode, then send a "tag_moment" command, set shutter toggle to true.
-        elif cmd & t85Aux1Action:
+
+        elif cmd & modeAux1Action:
             # ignore this action
             pass
         else:
