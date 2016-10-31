@@ -1,0 +1,156 @@
+#!/bin/sh
+# GoPro Hero Controller Configurator
+#
+# See LICENSE file for copyright and license details
+
+INTERACTIVE=True
+ASK_TO_REBOOT=0
+CONFIG=./gopro.conf
+
+. ./gopro.conf
+
+calc_wt_size() {
+  # NOTE: it's tempting to redirect stderr to /dev/null, so supress error 
+  # output from tput. However in this case, tput detects neither stdout or 
+  # stderr is a tty and so only gives default 80, 24 values
+  WT_HEIGHT=17
+  WT_WIDTH=$(tput cols)
+
+  if [ -z "$WT_WIDTH" ] || [ "$WT_WIDTH" -lt 60 ]; then
+    WT_WIDTH=80
+  fi
+  if [ "$WT_WIDTH" -gt 178 ]; then
+    WT_WIDTH=120
+  fi
+  WT_MENU_HEIGHT=$(($WT_HEIGHT-7))
+}
+
+do_finish() {
+  if [ $ASK_TO_REBOOT -eq 1 ]; then
+    whiptail --yesno "Would you like to reboot now?" 20 50 2
+    if [ $? -eq 0 ]; then # yes
+      sync
+      reboot
+    fi
+  fi
+  exit 0
+}
+
+do_change_ssid() {
+    if [ "$SSID" = "" ]; then
+        whiptail --msgbox "\
+Please obtain the SSID and Password from your GoPro Hero camera using the configuration \
+app available on the AppStore or Android Marketplace.  Once your wireless network is \
+configured and running on your camera, specify the following settings with those values." 20 60 1
+    fi
+    CURRENT_SSID=$SSID
+    NEW_SSID=$(whiptail --inputbox "Please enter your SSID" 20 60 "$CURRENT_SSID" 3>&1 1>&2 2>&3)
+    if [ $? -eq 0 ]; then
+        if [ "$NEW_SSID" != "$SSID" ]; then
+            ASK_TO_REBOOT=1
+        fi
+        SSID=$NEW_SSID
+        write_config
+        sync_config
+    fi
+}
+
+do_change_pass() {
+    if [ "$PASS" = "" ]; then
+        whiptail --msgbox "\
+Please obtain the SSID and Password from your GoPro Hero camera using the configuration \
+app available on the AppStore or Android Marketplace.  Once your wireless network is \
+configured and running on your camera, specify the following settings with those values." 20 60 1
+    fi
+    CURRENT_PASS=$PASS
+    NEW_PASS=$(whiptail --inputbox "Please enter your SSID" 20 60 "$CURRENT_PASS" 3>&1 1>&2 2>&3)
+    if [ $? -eq 0 ]; then
+        if [ "$NEW_PASS" != "$PASS" ]; then
+            ASK_TO_REBOOT=1
+        fi
+        PASS=$NEW_PASS
+        write_config
+        sync_config
+    fi
+
+}
+
+do_change_camera() {
+    if [ "$GPV" = "" ]; then
+        whiptail --msgbox "\
+Communications vary between GoPro camera models, not on the version, i.e. the Silver and Black versions. \
+We need to know which camera model you are using in order to communicate with it  properly." 20 60 1
+    fi
+    CURRENT_VERSION=$GPV
+    H3=ON
+    H4=OFF
+    if [ "$GPV" = "HERO4" ]; then
+        H4=ON
+        H3=Off
+    fi
+    NEW_VERSION=$(whiptail --title "GoPro Hero Camera Version" --radiolist \
+        "Choose your camera's version using the arrow keys and spacebar to select." 20 50 2 \
+        "HERO3" " GoPro HERO3 Camera " $H3 \
+        "HERO4" " GoPro HERO4 Camera " $H4 3>&1 1>&2 2>&3)
+    if [ $? -eq 0 ]; then
+        GPV=$NEW_VERSION
+        write_config
+        sync_config
+    fi
+}
+
+do_activate_wifi() {
+    echo "Activate Wifi..."
+}
+
+do_test_gopro() {
+    echo "Test gopro..."
+}
+
+do_save_settings() {
+    write_config
+    whiptail --msgbox "Your settings have been saved." 20 60 1
+}
+
+write_config() {
+    echo "SSID=\"$SSID\"" > $CONFIG
+    echo "PASS=\"$PASS\"" >> $CONFIG
+    echo "GPV=\"$GPV\""   >> $CONFIG
+}
+
+sync_config() {
+    echo "Syncing config..."
+}
+
+
+#
+# Interactive use loop
+#
+calc_wt_size
+while true; do
+    FUN=$(whiptail --title "GoPro Hero Controller Configuration Tool" --menu "Setup Options" $WT_HEIGHT $WT_WIDTH $WT_MENU_HEIGHT --cancel-button Finish --ok-button Select \
+        "1 GoPro Wifi SSID" "Enter or change your camera's wifi SSID" \
+        "2 GoPro Wifi Password" "Enter or change your camera's wifi Password" \
+        "3 GoPro Version" "Enter or change your camera's version" \
+        "4 Activate wifi network" "Activate the wifi network settings (only if USB wifi adapter is connected)" \
+        "5 Test GoPro connection" "Test the connection to yoru camera's wifi (only if USB wifi adapter is connected)" \
+        "6 Save Settings" "Save settings and update configuration"\
+        3>&1 1>&2 2>&3)
+    RET=$?
+    if [ $RET -eq 1 ]; then
+        do_finish
+    elif [ $RET -eq 0 ]; then
+        case "$FUN" in
+            1\ *) do_change_ssid ;;
+            2\ *) do_change_pass ;;
+            3\ *) do_change_camera ;;
+            4\ *) do_activate_wifi ;;
+            5\ *) do_test_gopro ;;
+            6\ *) do_save_settings ;;
+            *) whiptail --msgbox "Programmer error: unrecognized option" 20 60 1 ;;
+        esac || whiptail --msgbox "There was an error running option $FUN" 20 60 1
+    else
+        exit 1
+    fi
+done
+
